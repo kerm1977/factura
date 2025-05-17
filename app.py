@@ -38,24 +38,49 @@ def agregar_usuario(usuario, telefono, email, password, rol):
 def verificar_usuario(usuario, password):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, usuario, password FROM usuarios WHERE usuario = ?", (usuario,))
+    cursor.execute("SELECT id, usuario, password, telefono, email, rol FROM usuarios WHERE usuario = ?", (usuario,))
     user_data = cursor.fetchone()
     conn.close()
     if user_data:
         stored_password = user_data[2]
         hashed_input_password = hashlib.sha256(password.encode()).hexdigest()
         if hashed_input_password == stored_password:
-            return True, user_data[1]  # Retorna True y el nombre de usuario
+            return True, user_data  # Retorna True y todos los datos del usuario
     return False, "Credenciales incorrectas."
+
+def obtener_usuario_por_nombre(usuario):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, usuario, telefono, email, rol FROM usuarios WHERE usuario = ?", (usuario,))
+    user_data = cursor.fetchone()
+    conn.close()
+    return user_data
+
+def actualizar_usuario(usuario_original, nuevo_usuario, telefono, email, password):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    try:
+        cursor.execute("""
+            UPDATE usuarios
+            SET usuario = ?, telefono = ?, email = ?, password = ?
+            WHERE usuario = ?
+        """, (nuevo_usuario, telefono, email, hashed_password, usuario_original))
+        conn.commit()
+        conn.close()
+        return True, "Perfil actualizado exitosamente."
+    except sqlite3.IntegrityError:
+        conn.close()
+        return False, "El nuevo usuario o correo electrónico ya existen."
 
 def main(page: ft.Page):
     page.title = "Mi Aplicación"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.window_width = 350
-    page.window_height = 500
+    page.window_height = 600 # Aumentar la altura para la vista de perfil
 
     create_tables()
-    current_user: Optional[str] = None
+    current_user_data: Optional[tuple] = None
 
     # Establecer la ruta inicial al cargar la aplicación
     page.route = "/login"
@@ -88,9 +113,12 @@ def main(page: ft.Page):
     registro_login_link = ft.TextButton("¿Ya tienes cuenta? Inicia sesión aquí")
 
     # Controles para la vista Home
-    home_nombre_usuario = ft.Text(weight=ft.FontWeight.BOLD, size=18)
+    home_nombre_usuario = ft.TextButton(
+        content=ft.Text(weight=ft.FontWeight.BOLD, size=18),
+        on_click=lambda _: page.go("/profile")
+    )
     home_cerrar_sesion_icono = ft.IconButton(ft.Icons.LOGOUT, on_click=lambda _: page.go("/login"))
-    home_configuracion_icono = ft.IconButton(ft.Icons.SETTINGS, on_click=lambda _: print("Configuración")) # Ejemplo de acción
+    home_configuracion_icono = ft.IconButton(ft.Icons.SETTINGS, on_click=lambda _: page.go("/profile"))
     home_view = ft.Column(
         [
             ft.Row(
@@ -107,6 +135,38 @@ def main(page: ft.Page):
         ],
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         expand=True,
+    )
+
+    # Controles para la vista de Perfil
+    profile_usuario = ft.TextField(label="Usuario")
+    profile_telefono = ft.TextField(label="Teléfono")
+    profile_email = ft.TextField(label="Email")
+    profile_password = ft.TextField(label="Nueva Contraseña", password=True, can_reveal_password=True)
+    profile_confirmar_password = ft.TextField(label="Confirmar Nueva Contraseña", password=True, can_reveal_password=True)
+    profile_mensaje = ft.Text("", color=ft.Colors.RED_ACCENT_700)
+    profile_guardar_boton = ft.ElevatedButton("Guardar Cambios")
+    profile_volver_boton = ft.TextButton("Volver al Inicio", on_click=lambda _: page.go("/home"))
+    profile_view = ft.Column(
+        [
+            ft.Container(
+                padding=ft.padding.all(30),
+                content=ft.Column(
+                    [
+                        ft.Text("Editar Perfil", style=ft.TextThemeStyle.HEADLINE_MEDIUM),
+                        profile_usuario,
+                        profile_telefono,
+                        profile_email,
+                        profile_password,
+                        profile_confirmar_password,
+                        profile_mensaje,
+                        profile_guardar_boton,
+                        profile_volver_boton,
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                )
+            )
+        ],
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
     )
 
     def actualizar_vista(route):
@@ -151,12 +211,27 @@ def main(page: ft.Page):
                 )
             )
         elif page.route == "/home":
-            home_nombre_usuario.value = current_user
+            if current_user_data:
+                home_nombre_usuario.content.value = current_user_data[1]
             page.views.append(
                 ft.View(
                     "/home",
                     [home_view],
                     padding=ft.padding.only(top=10, right=10, left=30, bottom=30), # Reducir padding superior y derecho
+                )
+            )
+        elif page.route == "/profile":
+            if current_user_data:
+                profile_usuario.value = current_user_data[1]
+                profile_telefono.value = current_user_data[3]
+                profile_email.value = current_user_data[4]
+                profile_password.value = "" # Limpiar campos de contraseña
+                profile_confirmar_password.value = ""
+                profile_mensaje.value = ""
+            page.views.append(
+                ft.View(
+                    "/profile",
+                    [profile_view],
                 )
             )
         page.update()
@@ -168,14 +243,14 @@ def main(page: ft.Page):
         page.go("/login")
 
     def manejar_login(e):
-        nonlocal current_user
-        success, message = verificar_usuario(login_usuario.value, login_password.value)
+        nonlocal current_user_data
+        success, user_data = verificar_usuario(login_usuario.value, login_password.value)
         if success:
-            current_user = message
+            current_user_data = user_data
             login_mensaje.value = ""
             page.go("/home")
         else:
-            login_mensaje.value = message
+            login_mensaje.value = user_data # 'user_data' contiene el mensaje de error en caso de fallo
         page.update()
 
     def manejar_registro(e):
@@ -198,10 +273,41 @@ def main(page: ft.Page):
             registro_mensaje.value = message
         page.update()
 
+    def guardar_perfil(e):
+        nonlocal current_user_data
+        if current_user_data is None:
+            profile_mensaje.value = "No hay usuario autenticado."
+            page.update()
+            return
+
+        if profile_password.value and profile_password.value != profile_confirmar_password.value:
+            profile_mensaje.value = "Las nuevas contraseñas no coinciden."
+            page.update()
+            return
+
+        nuevo_password = profile_password.value if profile_password.value else current_user_data[2] # Si no se ingresa nueva contraseña, se mantiene la anterior
+
+        success, message = actualizar_usuario(
+            current_user_data[1], # Usuario original
+            profile_usuario.value,
+            profile_telefono.value,
+            profile_email.value,
+            nuevo_password
+        )
+        if success:
+            profile_mensaje.value = message
+            # Recargar los datos del usuario actualizados
+            current_user_data = obtener_usuario_por_nombre(profile_usuario.value)
+            page.go("/home")
+        else:
+            profile_mensaje.value = message
+        page.update()
+
     login_registro_link.on_click = ir_a_registro
     registro_login_link.on_click = ir_a_login
     login_boton.on_click = manejar_login
     registro_boton.on_click = manejar_registro
+    profile_guardar_boton.on_click = guardar_perfil
 
     page.on_route_change = actualizar_vista
     page.go(page.route)
