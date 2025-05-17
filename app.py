@@ -73,6 +73,15 @@ def actualizar_usuario(usuario_original, nuevo_usuario, telefono, email, passwor
         conn.close()
         return False, "El nuevo usuario o correo electrónico ya existen."
 
+def obtener_todos_los_usuarios():
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, usuario, telefono, email, rol FROM usuarios")
+    usuarios = cursor.fetchall()
+    conn.close()
+    return usuarios
+
+
 def main(page: ft.Page):
     page.title = "Mi Aplicación"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
@@ -146,6 +155,8 @@ def main(page: ft.Page):
     profile_mensaje = ft.Text("", color=ft.Colors.RED_ACCENT_700)
     profile_guardar_boton = ft.ElevatedButton("Guardar Cambios")
     profile_volver_boton = ft.TextButton("Volver al Inicio", on_click=lambda _: page.go("/home"))
+    # Aquí se va a mostrar la lista de usuarios
+    lista_usuarios_control = ft.Column()
     profile_view = ft.Column(
         [
             ft.Container(
@@ -161,6 +172,9 @@ def main(page: ft.Page):
                         profile_mensaje,
                         profile_guardar_boton,
                         profile_volver_boton,
+                        ft.Divider(),  # Separador visual
+                        ft.Text("Usuarios Registrados", style=ft.TextThemeStyle.TITLE_MEDIUM),
+                        lista_usuarios_control, # Aquí se agregan los controles de usuario
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 )
@@ -243,6 +257,15 @@ def main(page: ft.Page):
                 profile_password.value = "" # Limpiar campos de contraseña
                 profile_confirmar_password.value = ""
                 profile_mensaje.value = ""
+
+            # Obtener la lista de usuarios y actualizar el control
+            lista_usuarios = obtener_todos_los_usuarios()
+            lista_usuarios_control.controls.clear()  # Limpiar la lista anterior
+            for usuario in lista_usuarios:
+                lista_usuarios_control.controls.append(
+                    ft.Text(f"ID: {usuario[0]}, Usuario: {usuario[1]}, Teléfono: {usuario[2]}, Email: {usuario[3]}, Rol: {usuario[4]}")
+                )
+            # Agregar la lista de usuarios al la vista
             page.views.append(
                 ft.View(
                     "/profile",
@@ -339,3 +362,4 @@ def main(page: ft.Page):
 
 if __name__ == "__main__":
     ft.app(target=main)
+
