@@ -115,17 +115,17 @@ def main(page: ft.Page):
     # Controles para la vista Home
     home_nombre_usuario = ft.TextButton(
         content=ft.Text(weight=ft.FontWeight.BOLD, size=18),
-        on_click=lambda _: page.go("/profile")
+        on_click=lambda _: page.go("/profile") # Mantener el perfil en este icono por ahora
     )
     home_cerrar_sesion_icono = ft.IconButton(ft.Icons.LOGOUT, on_click=lambda _: page.go("/login"))
-    home_configuracion_icono = ft.IconButton(ft.Icons.SETTINGS, on_click=lambda _: page.go("/profile"))
+    home_contactos_icono = ft.IconButton(ft.Icons.PERSON, on_click=lambda _: page.go("/contacts"))
     home_view = ft.Column(
         [
             ft.Row(
                 [
                     ft.Container(expand=True), # Empuja los elementos al extremo derecho
                     home_nombre_usuario,
-                    home_configuracion_icono,
+                    home_contactos_icono,
                     ft.VerticalDivider(), # Separador vertical
                     home_cerrar_sesion_icono,
                 ],
@@ -167,6 +167,20 @@ def main(page: ft.Page):
             )
         ],
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+    )
+
+    # Controles para la vista de Contactos
+    contactos_titulo = ft.Text("Mis Contactos", style=ft.TextThemeStyle.HEADLINE_SMALL)
+    contactos_volver_boton = ft.ElevatedButton("Volver", on_click=lambda _: page.go("/home"))
+    contactos_view = ft.Column(
+        [
+            contactos_titulo,
+            ft.Text("¡Aquí estarán tus contactos!", size=16),
+            contactos_volver_boton,
+        ],
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        expand=True,
+        alignment=ft.MainAxisAlignment.CENTER,
     )
 
     def actualizar_vista(route):
@@ -234,7 +248,17 @@ def main(page: ft.Page):
                     [profile_view],
                 )
             )
-        page.update()
+        elif page.route == "/contacts":
+            page.views.append(
+                ft.View(
+                    "/contacts",
+                    [contactos_view],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    vertical_alignment=ft.MainAxisAlignment.CENTER,  # Añadido para centrar la vista
+                    padding=ft.padding.all(30),
+                )
+            )
+        page.update() # Añadido para actualizar la página después de cambiar la ruta
 
     def ir_a_registro(e):
         page.go("/register")
