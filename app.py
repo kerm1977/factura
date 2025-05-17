@@ -236,6 +236,7 @@ def main(page: ft.Page):
             )
         elif page.route == "/profile":
             if current_user_data:
+                # Corregir la asignación de valores aquí
                 profile_usuario.value = current_user_data[1]
                 profile_telefono.value = current_user_data[3]
                 profile_email.value = current_user_data[4]
