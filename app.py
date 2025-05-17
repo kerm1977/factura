@@ -88,11 +88,21 @@ def main(page: ft.Page):
     registro_login_link = ft.TextButton("¿Ya tienes cuenta? Inicia sesión aquí")
 
     # Controles para la vista Home
-    home_nombre_usuario = ft.Text("")
+    home_nombre_usuario = ft.Text(weight=ft.FontWeight.BOLD, size=18)
     home_cerrar_sesion_icono = ft.IconButton(ft.Icons.LOGOUT, on_click=lambda _: page.go("/login"))
+    home_configuracion_icono = ft.IconButton(ft.Icons.SETTINGS, on_click=lambda _: print("Configuración")) # Ejemplo de acción
     home_view = ft.Column(
         [
-            ft.Row([home_nombre_usuario, ft.Container(expand=True), home_cerrar_sesion_icono], alignment=ft.MainAxisAlignment.END),
+            ft.Row(
+                [
+                    ft.Container(expand=True), # Empuja los elementos al extremo derecho
+                    home_nombre_usuario,
+                    home_configuracion_icono,
+                    ft.VerticalDivider(), # Separador vertical
+                    home_cerrar_sesion_icono,
+                ],
+                alignment=ft.MainAxisAlignment.END,
+            ),
             ft.Text("¡Bienvenido a la página de inicio!", size=20),
         ],
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -141,12 +151,12 @@ def main(page: ft.Page):
                 )
             )
         elif page.route == "/home":
-            home_nombre_usuario.value = f"Hola, {current_user}"
+            home_nombre_usuario.value = current_user
             page.views.append(
                 ft.View(
                     "/home",
                     [home_view],
-                    padding=ft.padding.all(30),
+                    padding=ft.padding.only(top=10, right=10, left=30, bottom=30), # Reducir padding superior y derecho
                 )
             )
         page.update()
